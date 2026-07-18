@@ -145,10 +145,45 @@
 @endsection
 
 @push('styles')
-<style type="text/tailwindcss">
-.label { @apply block text-sm font-medium text-gray-700 mb-1; }
-.input { @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500; }
-.input-file { @apply w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100; }
+<style>
+.label {
+    display: block;
+    margin-bottom: .25rem;
+    color: #374151;
+    font-size: .875rem;
+    font-weight: 500;
+}
+.input {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: .5rem;
+    padding: .5rem .75rem;
+    color: #111827;
+    background: #fff;
+    font-size: .875rem;
+    outline: none;
+}
+.input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / .2);
+}
+.input-file {
+    width: 100%;
+    color: #6b7280;
+    font-size: .875rem;
+}
+.input-file::file-selector-button {
+    margin-right: .75rem;
+    border: 0;
+    border-radius: .5rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    padding: .375rem .75rem;
+    font-weight: 600;
+}
+.input-file:hover::file-selector-button {
+    background: #dbeafe;
+}
 </style>
 @endpush
 

@@ -60,13 +60,22 @@ class HitungSkor
             return DB::connection('peserta_db')
                 ->table('mata_pelajarans')
                 ->where('tipe', 'wajib')
-                ->pluck('id');
+                ->pluck('id')
+                ->map(fn($id) => (int) $id)
+                ->values()
+                ->all();
         });
 
-        $allMapelIds = $pilihanIds->merge($wajibIds)->unique()->values();
+        $allMapelIds = collect($pilihanIds)
+            ->merge(collect($wajibIds)->flatten())
+            ->flatten()
+            ->filter(fn($id) => is_numeric($id))
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->values();
 
         // ── Soal + kunci dari admin DB ─────────────────────────────
-        $soals = AdminSoal::whereIn('mata_pelajaran_id', $allMapelIds)
+        $soals = AdminSoal::whereIn('mata_pelajaran_id', $allMapelIds->all())
             ->get()
             ->keyBy('id');
 
