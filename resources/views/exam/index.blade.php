@@ -699,6 +699,47 @@ function showWarning(message, total, locked) {
     const modal = byId('modal-peringatan');
     modal?.classList.remove('hidden');
     modal?.classList.add('flex');
+    playViolationWarningSound();
+}
+
+function playViolationWarningSound() {
+    const audio = byId('suara-peringatan-pelanggaran');
+    if (!audio) return;
+
+    audio.muted = false;
+    audio.volume = 1;
+    audio.currentTime = 0;
+    audio.play().catch(error => {
+        console.warn('Suara peringatan tidak dapat diputar oleh browser.', error);
+    });
+}
+
+function stopViolationWarningSound() {
+    const audio = byId('suara-peringatan-pelanggaran');
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
+}
+
+function unlockViolationWarningSound() {
+    const audio = byId('suara-peringatan-pelanggaran');
+    if (!audio || audio.dataset.unlocked === 'true') return;
+
+    audio.muted = true;
+    audio.volume = 1;
+
+    const playAttempt = audio.play();
+    if (!playAttempt) return;
+
+    playAttempt.then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+        audio.dataset.unlocked = 'true';
+    }).catch(() => {
+        audio.muted = false;
+    });
 }
 
 function showSoftWarning(message) {
@@ -711,6 +752,8 @@ function showSoftWarning(message) {
 }
 
 function tutupModal() {
+    stopViolationWarningSound();
+
     const modal = byId('modal-peringatan');
     modal?.classList.add('hidden');
     modal?.classList.remove('flex');
@@ -740,6 +783,8 @@ function hideExamModeGate() {
 }
 
 async function enterExamMode() {
+    unlockViolationWarningSound();
+
     if (!supportsFullscreen()) {
         state.examModeStarted = true;
         hideExamModeGate();

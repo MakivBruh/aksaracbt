@@ -10,6 +10,10 @@
     </div>
 </div>
 
+<audio id="suara-peringatan-pelanggaran"
+       src="{{ asset('sounds/peringatan-pelanggaran.mp3') }}"
+       preload="auto"></audio>
+
 <div id="exam-mode-gate" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
     <div class="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
         <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl font-bold text-blue-700">!</div>
