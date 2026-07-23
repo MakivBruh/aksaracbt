@@ -19,7 +19,13 @@ return [
         ],
         'soal_images' => [
             'driver' => 'local',
-            'root' => env('SOAL_IMAGES_ROOT', dirname(base_path()).DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'soal-images'),
+            'root' => env('SOAL_IMAGES_ROOT', storage_path('app/private')),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+        'soal_images_legacy' => [
+            'driver' => 'local',
+            'root' => env('SOAL_IMAGES_LEGACY_ROOT', dirname(base_path()).DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'soal-images'),
             'visibility' => 'private',
             'throw' => false,
         ],

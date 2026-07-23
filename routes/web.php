@@ -52,6 +52,7 @@ Route::get('/media/soal/{filename}', [MediaController::class, 'soal'])
 // JANGAN deploy tanpa proteksi auth — ini nyimpen token_login peserta.
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', fn() => redirect()->route('admin.peserta.index'));
+    Route::get('media/soal/{filename}', [MediaController::class, 'soalAdmin'])->name('media.soal');
 
     Route::resource('sessions', ExamSessionController::class)
         ->except(['show', 'destroy'])

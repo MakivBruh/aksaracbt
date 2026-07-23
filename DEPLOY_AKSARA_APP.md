@@ -82,6 +82,22 @@ php artisan route:cache
 php artisan view:cache
 ```
 
+Perubahan tipe soal kompleks memerlukan ekstensi PHP `bcmath`. Pastikan aktif sebelum deploy:
+
+```bash
+php -m | grep bcmath
+```
+
+User migration harus memiliki izin `ALTER` dan `CREATE` pada database peserta dan admin.
+Jika memakai user terbatas terpisah, tambahkan izin berikut setelah migration:
+
+- `PESERTA_SOAL_SYNC_DB_*`: `SELECT/INSERT/UPDATE/DELETE` pada `soals` dan `question_items`.
+- `PESERTA_SCORING_DB_*`: `SELECT/INSERT/UPDATE/DELETE` pada `nilai_details`, `nilai_soal_details`, dan `nilai_totals`.
+
+Gambar soal baru disimpan privat di `storage/app/private/soal-images`. Pastikan folder `storage`
+dapat ditulis oleh user PHP-FPM/web server. Gambar dari lokasi lama tetap dibaca melalui fallback
+`SOAL_IMAGES_LEGACY_ROOT` selama proses pemindahan.
+
 ## Route Utama
 
 - `/` halaman login peserta

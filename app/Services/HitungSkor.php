@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class HitungSkor
 {
+    public function __construct(private QuestionScorer $scorer) {}
+
     /**
      * Hitung skor semua peserta yang sudah selesai.
      * Hasilnya di-upsert ke tabel nilai_details di peserta_db, lewat
@@ -75,9 +77,13 @@ class HitungSkor
             ->values();
 
         // ── Soal + kunci dari admin DB ─────────────────────────────
-        $soals = AdminSoal::whereIn('mata_pelajaran_id', $allMapelIds->all())
+        $soals = AdminSoal::with('items')->whereIn('mata_pelajaran_id', $allMapelIds->all())
             ->get()
             ->keyBy('id');
+
+        $mapelTypes = DB::connection('peserta_db')->table('mata_pelajarans')
+            ->whereIn('id', $allMapelIds)
+            ->pluck('tipe', 'id');
 
         // ── Jawaban peserta dari peserta_db ────────────────────────
         $jawabans = DB::connection('peserta_db')
@@ -89,27 +95,62 @@ class HitungSkor
         // ── Hitung per mapel ───────────────────────────────────────
         $nilaiPerMapel  = [];
         $totalBenar     = 0;
+        $totalPoinMentah = '0.000000';
 
         foreach ($allMapelIds as $mapelId) {
             $soalMapel = $soals->where('mata_pelajaran_id', $mapelId);
             $benar = $salah = $kosong = 0;
+            $poinMapel = '0.000000';
 
             foreach ($soalMapel as $soal) {
-                $jawaban = $jawabans->get($soal->id)?->jawaban;
+                $jawabanRow = $jawabans->get($soal->id);
+                $tipeSoal = $soal->tipe_soal ?: 'pilihan_ganda';
+                $jawaban = $tipeSoal === 'pilihan_ganda'
+                    ? $jawabanRow?->jawaban
+                    : json_decode((string) ($jawabanRow?->jawaban_data ?? 'null'), true);
+                $nilaiMaksimum = (string) ($soal->nilai_maksimum ?: ($mapelTypes[$mapelId] === 'pilihan' ? '10' : '5'));
+                $hasilSoal = $this->scorer->score(
+                    $tipeSoal,
+                    $nilaiMaksimum,
+                    $jawaban,
+                    $soal->kunci_jawaban,
+                    $soal->items->map(fn($item) => [
+                        'id' => $item->id,
+                        'is_correct' => $item->is_correct,
+                        'correct_value' => $item->correct_value,
+                    ])->all(),
+                );
 
-                if (! $jawaban) {
+                if (! $hasilSoal['answered']) {
                     $kosong++;
-                } elseif (strtoupper($jawaban) === strtoupper($soal->kunci_jawaban)) {
+                } elseif ($hasilSoal['fully_correct']) {
                     $benar++;
                 } else {
                     $salah++;
                 }
+
+                $poinMapel = $this->scorer->add($poinMapel, $hasilSoal['score']);
+
+                DB::connection('peserta_db_scoring')->table('nilai_soal_details')->upsert([
+                    [
+                        'peserta_id' => $pesertaId,
+                        'soal_id' => $soal->id,
+                        'poin_diperoleh' => $hasilSoal['score'],
+                        'poin_maksimum' => $nilaiMaksimum,
+                        'sub_item_benar' => $hasilSoal['correct_items'],
+                        'jumlah_sub_item' => max(1, $hasilSoal['item_count']),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                ], ['peserta_id', 'soal_id'], [
+                    'poin_diperoleh', 'poin_maksimum', 'sub_item_benar', 'jumlah_sub_item', 'updated_at',
+                ]);
             }
 
-            // TKA: 1 poin per benar, salah & kosong = 0 (tidak minus)
-            $skor = $benar * 1;
-            $nilaiPerMapel[$mapelId] = compact('benar', 'salah', 'kosong', 'skor');
+            $skor = round((float) $poinMapel, 2);
+            $nilaiPerMapel[$mapelId] = compact('benar', 'salah', 'kosong', 'skor', 'poinMapel');
             $totalBenar += $benar;
+            $totalPoinMentah = $this->scorer->add($totalPoinMentah, $poinMapel);
         }
 
         // ── Simpan ke nilai_details ─────────────────────────────────
@@ -127,13 +168,25 @@ class HitungSkor
                         'salah'            => $n['salah'],
                         'kosong'           => $n['kosong'],
                         'skor'             => $n['skor'],
+                        'poin_mentah'      => $n['poinMapel'],
                         'created_at'       => now(),
                         'updated_at'       => now(),
                     ],
                     ['peserta_id', 'mata_pelajaran_id'],
-                    ['benar', 'salah', 'kosong', 'skor', 'updated_at']
+                    ['benar', 'salah', 'kosong', 'skor', 'poin_mentah', 'updated_at']
                 );
         }
+
+        $nilaiAkhir = $this->scorer->finalScore($totalPoinMentah);
+        DB::connection('peserta_db_scoring')->table('nilai_totals')->upsert([
+            [
+                'peserta_id' => $pesertaId,
+                'poin_mentah' => $totalPoinMentah,
+                'nilai_akhir' => $nilaiAkhir,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ], ['peserta_id'], ['poin_mentah', 'nilai_akhir', 'updated_at']);
 
         Log::info("Skor dihitung untuk peserta {$peserta->no_ujian}", [
             'total_benar' => $totalBenar,
@@ -145,7 +198,9 @@ class HitungSkor
             'nama_sekolah'    => $peserta->nama_sekolah,
             'no_ujian'        => $peserta->no_ujian,
             'total_benar'     => $totalBenar,
-            'skor_total'      => $totalBenar,
+            'skor_total'      => $totalPoinMentah,
+            'total_poin_mentah' => $totalPoinMentah,
+            'nilai_akhir'     => $nilaiAkhir,
             'nilai_per_mapel' => $nilaiPerMapel,
         ];
     }

@@ -16,18 +16,32 @@ class MediaController extends Controller
      */
     public function soal(Request $request, string $filename): StreamedResponse
     {
-        // Validasi: hanya karakter aman (UUID format)
+        return $this->response($filename);
+    }
+
+    public function soalAdmin(string $filename): StreamedResponse
+    {
+        return $this->response($filename);
+    }
+
+    private function response(string $filename): StreamedResponse
+    {
         if (! preg_match('/^[a-f0-9\-]+\.(jpg|jpeg|png|webp|gif)$/i', $filename)) {
             abort(400, 'Nama file tidak valid.');
         }
 
         $path = 'soal-images/' . $filename;
+        $disk = Storage::disk('soal_images');
 
-        if (! Storage::disk('soal_images')->exists($path)) {
-            abort(404, 'Gambar tidak ditemukan.');
+        if (! $disk->exists($path)) {
+            $legacy = Storage::disk('soal_images_legacy');
+            if (! $legacy->exists($path)) {
+                abort(404, 'Gambar tidak ditemukan.');
+            }
+            $disk = $legacy;
         }
 
-        return Storage::disk('soal_images')->response($path, null, [
+        return $disk->response($path, null, [
             'Cache-Control' => 'private, max-age=3600',
             'X-Content-Type-Options' => 'nosniff',
         ]);

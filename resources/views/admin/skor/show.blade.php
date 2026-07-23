@@ -38,7 +38,7 @@
         </div>
         <div class="rounded-xl bg-blue-600 p-4 text-white shadow-sm">
             <p class="text-xs uppercase tracking-wide text-blue-100">Nilai Akhir</p>
-            <p class="mt-2 text-2xl font-bold">{{ number_format($totals['nilai_rata_rata'], 2) }}</p>
+            <p class="mt-2 text-2xl font-bold">{{ number_format($totals['nilai_akhir'], 2) }}</p>
         </div>
     </div>
 
@@ -46,7 +46,7 @@
         <div class="overflow-hidden rounded-xl bg-white shadow-sm">
             <div class="border-b px-4 py-3">
                 <h4 class="font-semibold text-gray-900">Statistik Per Mata Pelajaran</h4>
-                <p class="mt-1 text-sm text-gray-500">Nilai mapel dihitung dari benar / total soal x 100.</p>
+                <p class="mt-1 text-sm text-gray-500">Nilai mapel dihitung dari poin yang diperoleh terhadap poin maksimum mapel.</p>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
@@ -91,12 +91,12 @@
             <h4 class="font-semibold text-gray-900">Ringkasan Nilai</h4>
             <dl class="mt-4 space-y-3 text-sm">
                 <div class="flex items-center justify-between">
-                    <dt class="text-gray-500">Rata-rata per mapel</dt>
-                    <dd class="font-bold text-blue-700">{{ number_format($totals['nilai_rata_rata'], 2) }}</dd>
+                    <dt class="text-gray-500">Poin mentah</dt>
+                    <dd class="font-bold text-blue-700">{{ number_format($totals['poin_mentah'], 2) }} / 600</dd>
                 </div>
                 <div class="flex items-center justify-between">
-                    <dt class="text-gray-500">Total nilai mapel</dt>
-                    <dd class="font-semibold text-gray-900">{{ number_format($totals['total_nilai_mapel'], 2) }}</dd>
+                    <dt class="text-gray-500">Nilai akhir</dt>
+                    <dd class="font-semibold text-gray-900">{{ number_format($totals['nilai_akhir'], 2) }}</dd>
                 </div>
                 <div class="flex items-center justify-between">
                     <dt class="text-gray-500">Jumlah mapel</dt>
@@ -105,7 +105,7 @@
             </dl>
 
             <div class="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-700">
-                Nilai akhir memakai rata-rata nilai seluruh mapel agar peserta dengan pilihan mapel berbeda tetap dibandingkan secara adil.
+                Nilai akhir dihitung dari total poin mentah dibagi 6, dengan maksimum 100.
             </div>
         </div>
     </div>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Soal;
 
 class JawabanController extends Controller
 {
@@ -16,7 +17,7 @@ class JawabanController extends Controller
     {
         $request->validate([
             'soal_id' => 'required|integer',
-            'jawaban' => 'nullable|in:A,B,C,D,E',
+            'jawaban' => 'nullable',
         ]);
 
         $peserta = $request->user();
@@ -31,28 +32,58 @@ class JawabanController extends Controller
 
         // Pastikan soal ini memang untuk peserta yang bersangkutan
         $mapelIds = $peserta->semuaMapelIds();
-        $soalValid = \App\Models\Soal::where('id', $request->soal_id)
+        $soal = Soal::with('items')->where('id', $request->soal_id)
             ->whereIn('mata_pelajaran_id', $mapelIds)
-            ->exists();
+            ->first();
 
-        if (! $soalValid) {
+        if (! $soal) {
             return response()->json(['message' => 'Soal tidak valid.'], 422);
         }
+
+        $jawaban = $this->normalisasiJawaban($soal, $request->input('jawaban'));
 
         DB::table('jawabans')->upsert(
             [[
                 'peserta_id' => $peserta->id,
                 'soal_id'    => $request->soal_id,
-                'jawaban'    => $request->jawaban, // null = hapus pilihan
+                'jawaban'    => $soal->tipe_soal === 'pilihan_ganda' ? $jawaban : null,
+                'jawaban_data' => $soal->tipe_soal === 'pilihan_ganda' ? null : json_encode($jawaban),
                 'dijawab_at' => now(),
                 'created_at'  => now(),
                 'updated_at'  => now(),
             ]],
             ['peserta_id', 'soal_id'],
-            ['jawaban', 'dijawab_at', 'updated_at']
+            ['jawaban', 'jawaban_data', 'dijawab_at', 'updated_at']
         );
 
         return response()->json(['message' => 'Jawaban tersimpan.']);
+    }
+
+    private function normalisasiJawaban(Soal $soal, mixed $jawaban): string|array|null
+    {
+        if ($soal->tipe_soal === 'pilihan_ganda') {
+            $value = strtoupper((string) $jawaban);
+            abort_unless(in_array($value, ['A', 'B', 'C', 'D', 'E'], true), 422, 'Jawaban tidak valid.');
+            return $value;
+        }
+
+        $itemIds = $soal->items->pluck('id')->map(fn($id) => (string) $id);
+
+        if ($soal->tipe_soal === 'benar_salah') {
+            abort_unless(is_array($jawaban), 422, 'Jawaban tidak valid.');
+            return collect($jawaban)
+                ->filter(fn($value, $id) => $itemIds->contains((string) $id) && in_array(strtoupper((string) $value), ['A', 'B'], true))
+                ->mapWithKeys(fn($value, $id) => [(string) $id => strtoupper((string) $value)])
+                ->all();
+        }
+
+        abort_unless(is_array($jawaban), 422, 'Jawaban tidak valid.');
+        return collect($jawaban)
+            ->map(fn($id) => (string) $id)
+            ->filter(fn($id) => $itemIds->contains($id))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

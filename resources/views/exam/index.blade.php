@@ -129,6 +129,17 @@ function normalizeAnswerMap(raw) {
     }, {});
 }
 
+function isQuestionAnswered(question) {
+    const answer = state.answers[String(question.id)];
+    if (question.tipe_soal === 'benar_salah') {
+        return question.items?.length > 0
+            && answer && typeof answer === 'object' && !Array.isArray(answer)
+            && question.items.every(item => Object.prototype.hasOwnProperty.call(answer, String(item.id)));
+    }
+    if (question.tipe_soal === 'pilih_semua') return Array.isArray(answer) && answer.length > 0;
+    return typeof answer === 'string' && answer.length > 0;
+}
+
 function participantLabel(peserta) {
     const detail = peserta.nama_sekolah || peserta.no_ujian || peserta.email || 'Data peserta';
     return `${peserta.nama || 'Peserta'} - ${detail}`;
@@ -160,7 +171,7 @@ function renderSubjectSelection() {
     const subjectList = Object.values(state.subjects);
     const mandatorySubjects = subjectList.filter(subject => WAJIB_CODES.includes(subject.code));
     const electiveSubjects = subjectList.filter(subject => !WAJIB_CODES.includes(subject.code));
-    const totalAnswered = state.questions.filter(question => Boolean(state.answers[String(question.id)])).length;
+    const totalAnswered = state.questions.filter(isQuestionAnswered).length;
 
     mandatory.innerHTML = mandatorySubjects.length
         ? mandatorySubjects.map(renderSubjectCard).join('')
@@ -187,7 +198,7 @@ function renderEmptySubject(message) {
 
 function renderSubjectCard(subject) {
     const total = subject.questions.length;
-    const answered = subject.questions.filter(question => Boolean(state.answers[String(question.id)])).length;
+    const answered = subject.questions.filter(isQuestionAnswered).length;
     const status = answered === total && total > 0 ? 'Selesai' : answered > 0 ? 'Sedang Dikerjakan' : 'Belum Dikerjakan';
     const statusClass = {
         'Selesai': 'bg-emerald-50 text-emerald-700 ring-emerald-100',
@@ -256,7 +267,10 @@ function renderExam() {
     setText('exam-title', subject.name);
     setText('question-eyebrow', `${subject.name} - Soal ${state.currentIndex + 1} dari ${subject.questions.length}`);
     setText('question-heading', `Soal Nomor ${state.currentIndex + 1}`);
-    setHtml('question-content', question.teks_soal || '<p class="text-slate-500">Soal belum memiliki teks.</p>');
+    setHtml('question-content', question.teks_soal
+        ? question.teks_soal
+        : '<p class="text-slate-500">Soal belum memiliki teks.</p>');
+    renderQuestionTable(question);
     renderQuestionImage(question);
     renderOptions(question);
     renderReviewButton(question);
@@ -264,6 +278,19 @@ function renderExam() {
     renderProgress();
     renderBottomButtons();
     renderMath();
+}
+
+function renderQuestionTable(question) {
+    const rows = Array.isArray(question.tabel_data) ? question.tabel_data : [];
+    const html = rows.length ? `
+        <table class="min-w-full border-collapse text-sm">
+            <thead><tr>${rows[0].map(cell => `<th class="min-w-28 border border-slate-300 bg-slate-100 px-3 py-2 text-left font-semibold">${escapeHtml(cell)}</th>`).join('')}</tr></thead>
+            <tbody>${rows.slice(1).map(row => `<tr>${row.map(cell => `<td class="min-w-28 border border-slate-300 px-3 py-2">${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>` : '';
+    allById('question-table').forEach(element => {
+        element.innerHTML = html;
+        element.classList.toggle('hidden', !html);
+    });
 }
 
 function renderQuestionImage(question) {
@@ -283,6 +310,34 @@ function renderQuestionImage(question) {
 
 function renderOptions(question) {
     const selected = state.answers[String(question.id)];
+    if (question.tipe_soal === 'benar_salah') {
+        const values = selected && !Array.isArray(selected) ? Object.fromEntries(Object.entries(selected).map(([id, value]) => [id, value === true || value === 1 || value === '1' ? 'A' : value === false || value === 0 || value === '0' ? 'B' : String(value).toUpperCase()])) : {};
+        const labels = {A: question.option_label_a || 'Benar', B: question.option_label_b || 'Salah'};
+        const html = (question.items || []).map((item, index) => `
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <p class="leading-7 text-slate-800"><b>${index + 1}.</b> ${escapeHtml(item.konten)}</p>
+                ${item.gambar ? `<img src="${escapeAttribute(item.gambar)}" alt="Gambar pernyataan ${index + 1}" class="mt-3 max-h-64 max-w-full rounded-lg border border-slate-200 object-contain">` : ''}
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                    ${['A', 'B'].map(value => {
+                        const active = Object.prototype.hasOwnProperty.call(values, String(item.id)) && values[String(item.id)] === value;
+                        return `<button type="button" onclick="saveTrueFalse(${Number(question.id)}, ${Number(item.id)}, '${value}')" class="rounded-xl border px-4 py-3 font-semibold ${active ? 'border-blue-600 bg-blue-700 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}">${escapeHtml(labels[value])}</button>`;
+                    }).join('')}
+                </div>
+            </div>`).join('');
+        setHtml('option-list', html || '<p class="text-sm text-slate-500">Belum ada pernyataan.</p>');
+        return;
+    }
+
+    if (question.tipe_soal === 'pilih_semua') {
+        const values = Array.isArray(selected) ? selected.map(String) : [];
+        const html = (question.items || []).map((item, index) => {
+            const active = values.includes(String(item.id));
+            return `<button type="button" onclick="toggleSelectedItem(${Number(question.id)}, ${Number(item.id)})" class="flex w-full items-start gap-3 rounded-2xl border p-4 text-left ${active ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'border-slate-200 bg-white'}"><span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${active ? 'border-blue-700 bg-blue-700 text-white' : 'border-slate-300'}">${active ? '✓' : ''}</span><span class="min-w-0 leading-7 text-slate-800"><b>${index + 1}.</b> ${escapeHtml(item.konten)}${item.gambar ? `<img src="${escapeAttribute(item.gambar)}" alt="Gambar pernyataan ${index + 1}" class="mt-3 max-h-64 max-w-full rounded-lg border border-slate-200 object-contain">` : ''}</span></button>`;
+        }).join('');
+        setHtml('option-list', html || '<p class="text-sm text-slate-500">Belum ada pernyataan.</p>');
+        return;
+    }
+
     const options = Object.entries(question.opsi || {}).map(([letter, option]) => {
         const isSelected = selected === letter;
         const optionText = option?.teks || '';
@@ -298,7 +353,7 @@ function renderOptions(question) {
                     ${escapeHtml(letter)}
                 </span>
                 <span class="min-w-0 flex-1 text-base leading-7 text-slate-800 sm:text-sm sm:leading-6">
-                    ${optionText}
+                    ${escapeHtml(optionText)}
                     ${image}
                 </span>
             </button>
@@ -325,7 +380,7 @@ function renderNavigator() {
         const id = String(question.id);
         const isCurrent = index === state.currentIndex;
         const isReviewed = Boolean(state.reviews[id]);
-        const isAnswered = Boolean(state.answers[id]);
+        const isAnswered = isQuestionAnswered(question);
         let classes = 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50';
 
         if (isAnswered) classes = 'border-emerald-500 bg-emerald-500 text-white';
@@ -347,7 +402,7 @@ function renderNavigator() {
 
 function renderProgress() {
     const questions = getCurrentQuestions();
-    const answered = questions.filter(question => Boolean(state.answers[String(question.id)])).length;
+    const answered = questions.filter(isQuestionAnswered).length;
     const reviewed = questions.filter(question => Boolean(state.reviews[String(question.id)])).length;
     const remaining = Math.max(questions.length - answered, 0);
     const percent = questions.length ? Math.round((answered / questions.length) * 100) : 0;
@@ -388,6 +443,20 @@ function saveAnswer(questionId, answer) {
             body: { soal_id: questionId, jawaban: answer },
         }).catch(error => console.error(error));
     }, 600);
+}
+
+function saveTrueFalse(questionId, itemId, value) {
+    const current = state.answers[String(questionId)];
+    const answer = current && typeof current === 'object' && !Array.isArray(current) ? {...current} : {};
+    answer[String(itemId)] = value;
+    saveAnswer(questionId, answer);
+}
+
+function toggleSelectedItem(questionId, itemId) {
+    const current = Array.isArray(state.answers[String(questionId)]) ? [...state.answers[String(questionId)].map(String)] : [];
+    const id = String(itemId);
+    const answer = current.includes(id) ? current.filter(value => value !== id) : [...current, id];
+    saveAnswer(questionId, answer);
 }
 
 function toggleReview() {
@@ -478,8 +547,8 @@ function openSubmitDialog() {
     const allQuestions = state.questions;
     const subject = state.subjects[state.selectedSubject];
     const subjectQuestions = getCurrentQuestions();
-    const subjectAnswered = subjectQuestions.filter(question => Boolean(state.answers[String(question.id)])).length;
-    const answered = allQuestions.filter(question => Boolean(state.answers[String(question.id)])).length;
+    const subjectAnswered = subjectQuestions.filter(isQuestionAnswered).length;
+    const answered = allQuestions.filter(isQuestionAnswered).length;
     const reviewed = allQuestions.filter(question => Boolean(state.reviews[String(question.id)])).length;
     const unanswered = Math.max(allQuestions.length - answered, 0);
 
@@ -968,7 +1037,7 @@ function refreshDisplaySettings() {
 function renderMath() {
     if (typeof renderMathInElement !== 'function') return;
 
-    ['question-content', 'option-list'].forEach(id => {
+    ['question-content', 'question-table', 'option-list'].forEach(id => {
         allById(id).forEach(element => {
             renderMathInElement(element, {
                 delimiters: [

@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class NilaiDetail extends Model
 {
-    protected $fillable = ['peserta_id', 'mata_pelajaran_id', 'benar', 'salah', 'kosong', 'skor'];
+    protected $fillable = ['peserta_id', 'mata_pelajaran_id', 'benar', 'salah', 'kosong', 'skor', 'poin_mentah'];
+
+    protected $casts = [
+        'skor' => 'decimal:2',
+        'poin_mentah' => 'decimal:4',
+    ];
 
     public function peserta(): BelongsTo
     {

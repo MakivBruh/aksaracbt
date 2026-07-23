@@ -65,7 +65,10 @@ class HitungSkorController extends Controller
                 'nd.salah',
                 'nd.kosong',
                 'nd.skor',
+                'nd.poin_mentah',
+                'nt.nilai_akhir',
             )
+            ->leftJoin('nilai_totals as nt', 'p.id', '=', 'nt.peserta_id')
             ->orderBy('p.no_ujian')
             ->orderBy('mp.tipe', 'asc') // wajib dulu
             ->orderBy('mp.nama')
@@ -110,6 +113,7 @@ class HitungSkorController extends Controller
                 'nd.salah',
                 'nd.kosong',
                 'nd.skor',
+                'nd.poin_mentah',
             )
             ->orderBy('mp.tipe')
             ->orderBy('mp.nama')
@@ -117,7 +121,8 @@ class HitungSkorController extends Controller
             ->map(function ($row) {
                 $totalSoal = (int) $row->benar + (int) $row->salah + (int) $row->kosong;
                 $terjawab = (int) $row->benar + (int) $row->salah;
-                $nilai = $totalSoal > 0 ? round(((int) $row->benar / $totalSoal) * 100, 2) : 0;
+                $nilaiMaksimum = $row->mapel_tipe === 'pilihan' ? 150 : 100;
+                $nilai = $nilaiMaksimum > 0 ? round(((float) $row->poin_mentah / $nilaiMaksimum) * 100, 2) : 0;
 
                 return (object) [
                     'mapel_kode' => $row->mapel_kode,
@@ -129,8 +134,11 @@ class HitungSkorController extends Controller
                     'terjawab' => $terjawab,
                     'total_soal' => $totalSoal,
                     'nilai' => $nilai,
+                    'poin_mentah' => (float) $row->poin_mentah,
                 ];
             });
+
+        $nilaiTotal = DB::connection('peserta_db')->table('nilai_totals')->where('peserta_id', $pesertaId)->first();
 
         $totals = [
             'total_soal' => $mapelStats->sum('total_soal'),
@@ -140,6 +148,8 @@ class HitungSkorController extends Controller
             'salah' => $mapelStats->sum('salah'),
             'nilai_rata_rata' => round($mapelStats->avg('nilai') ?? 0, 2),
             'total_nilai_mapel' => round($mapelStats->sum('nilai'), 2),
+            'poin_mentah' => (float) ($nilaiTotal?->poin_mentah ?? 0),
+            'nilai_akhir' => (float) ($nilaiTotal?->nilai_akhir ?? 0),
         ];
 
         return view('admin.skor.show', compact('peserta', 'mapelStats', 'totals'));
@@ -161,7 +171,7 @@ class HitungSkorController extends Controller
     {
         return DB::connection('peserta_db')
             ->table('pesertas as p')
-            ->join('nilai_details as nd', 'p.id', '=', 'nd.peserta_id')
+            ->join('nilai_totals as nt', 'p.id', '=', 'nt.peserta_id')
             ->where('p.status', 'selesai')
             ->select(
                 'p.id',
@@ -170,12 +180,11 @@ class HitungSkorController extends Controller
                 'p.email',
                 'p.no_ujian',
                 'p.selesai_ujian_at',
-                DB::raw('ROUND(AVG(CASE WHEN (nd.benar + nd.salah + nd.kosong) > 0 THEN (nd.benar * 100.0 / (nd.benar + nd.salah + nd.kosong)) ELSE 0 END), 2) as nilai_akhir'),
-                DB::raw('SUM(nd.benar) as total_benar'),
-                DB::raw('SUM(nd.benar + nd.salah + nd.kosong) as total_soal'),
-                DB::raw('COUNT(*) as jumlah_mapel'),
+                'nt.nilai_akhir',
+                'nt.poin_mentah',
+                DB::raw('(SELECT COALESCE(SUM(nd.benar), 0) FROM nilai_details nd WHERE nd.peserta_id = p.id) as total_benar'),
+                DB::raw('(SELECT COALESCE(SUM(nd.benar + nd.salah + nd.kosong), 0) FROM nilai_details nd WHERE nd.peserta_id = p.id) as total_soal'),
             )
-            ->groupBy('p.id', 'p.nama', 'p.nama_sekolah', 'p.email', 'p.no_ujian', 'p.selesai_ujian_at')
             ->orderByDesc('nilai_akhir')
             ->orderByDesc('total_benar')
             ->orderBy('p.selesai_ujian_at')
@@ -186,7 +195,7 @@ class HitungSkorController extends Controller
                 $row->nilai_akhir = (float) $row->nilai_akhir;
                 $row->total_benar = (int) $row->total_benar;
                 $row->total_soal = (int) $row->total_soal;
-                $row->jumlah_mapel = (int) $row->jumlah_mapel;
+                $row->poin_mentah = (float) $row->poin_mentah;
 
                 return $row;
             });

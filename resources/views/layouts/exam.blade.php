@@ -90,6 +90,13 @@ html[data-font-scale="large"] .text-4xl { font-size: 3.25rem !important; }
         html[data-theme="dark"] body.exam-interface .shadow-2xl { box-shadow: 0 18px 45px rgb(0 0 0 / 0.35) !important; }
         html[data-theme="dark"] body.exam-interface .prose { color: #e2e8f0; }
         html[data-theme="dark"] body.exam-interface .prose :where(strong) { color: #f8fafc; }
+        .question-content table { width: max-content; min-width: 100%; border-collapse: collapse; }
+        .question-content th, .question-content td { border: 1px solid #cbd5e1; padding: .55rem .75rem; text-align: left; }
+        .question-content th { background: #f1f5f9; font-weight: 700; }
+        .question-content ul { list-style: disc; padding-left: 1.5rem; }
+        .question-content ol { list-style: decimal; padding-left: 1.5rem; }
+        .question-content blockquote { border-left: 4px solid #94a3b8; padding-left: 1rem; color: #475569; }
+        .question-content a { color: #1d4ed8; text-decoration: underline; }
     </style>
 
     <script>

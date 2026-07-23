@@ -66,12 +66,8 @@
                         @foreach($rekap as $pesertaId => $rows)
                             @php
                                 $rowByKode = $rows->keyBy('mapel_kode');
-                                $nilaiMapel = $rows->map(function ($row) {
-                                    $totalSoal = $row->benar + $row->salah + $row->kosong;
-                                    return $totalSoal > 0 ? round(($row->benar / $totalSoal) * 100, 2) : 0;
-                                });
-                                $nilaiAkhir = round($nilaiMapel->avg() ?? 0, 2);
                                 $peserta = $rows->first();
+                                $nilaiAkhir = (float) ($peserta->nilai_akhir ?? 0);
                             @endphp
                             <tr class="hover:bg-gray-50">
                                 <td class="sticky left-0 bg-white px-4 py-3 font-mono text-xs">{{ $peserta->no_ujian }}</td>
@@ -83,12 +79,13 @@
                                     @php
                                         $row = $rowByKode->get($mapel->mapel_kode);
                                         $totalSoal = $row ? $row->benar + $row->salah + $row->kosong : 0;
-                                        $nilai = $row && $totalSoal > 0 ? round(($row->benar / $totalSoal) * 100, 1) : null;
+                                        $maksimum = $mapel->mapel_tipe === 'pilihan' ? 150 : 100;
+                                        $nilai = $row ? round(((float) $row->poin_mentah / $maksimum) * 100, 1) : null;
                                     @endphp
                                     <td class="px-4 py-3 text-center">
                                         @if($row)
                                             <div class="font-semibold text-gray-900">{{ number_format($nilai, 1) }}</div>
-                                            <div class="text-xs text-gray-400">{{ $row->benar }}/{{ $totalSoal }} benar</div>
+                                            <div class="text-xs text-gray-400">{{ number_format($row->poin_mentah, 2) }} poin</div>
                                         @else
                                             <span class="text-gray-300">-</span>
                                         @endif
