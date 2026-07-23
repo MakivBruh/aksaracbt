@@ -8,6 +8,7 @@
     @include('exam.partials.exam-shell')
     @include('exam.partials.submit-modal')
     @include('exam.partials.warning-modal')
+    @include('exam.partials.image-zoom-modal')
 @endsection
 
 @push('scripts')
@@ -316,7 +317,7 @@ function renderOptions(question) {
         const html = (question.items || []).map((item, index) => `
             <div class="rounded-2xl border border-slate-200 bg-white p-4">
                 <p class="leading-7 text-slate-800"><b>${index + 1}.</b> ${escapeHtml(item.konten)}</p>
-                ${item.gambar ? `<img src="${escapeAttribute(item.gambar)}" alt="Gambar pernyataan ${index + 1}" class="mt-3 max-h-64 max-w-full rounded-lg border border-slate-200 object-contain">` : ''}
+                ${item.gambar ? `<img src="${escapeAttribute(item.gambar)}" alt="Gambar pernyataan ${index + 1}" data-zoomable-image class="mt-3 max-h-64 max-w-full cursor-zoom-in rounded-lg border border-slate-200 object-contain" title="Klik untuk memperbesar">` : ''}
                 <div class="mt-3 grid grid-cols-2 gap-2">
                     ${['A', 'B'].map(value => {
                         const active = Object.prototype.hasOwnProperty.call(values, String(item.id)) && values[String(item.id)] === value;
@@ -332,7 +333,7 @@ function renderOptions(question) {
         const values = Array.isArray(selected) ? selected.map(String) : [];
         const html = (question.items || []).map((item, index) => {
             const active = values.includes(String(item.id));
-            return `<button type="button" onclick="toggleSelectedItem(${Number(question.id)}, ${Number(item.id)})" class="flex w-full items-start gap-3 rounded-2xl border p-4 text-left ${active ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'border-slate-200 bg-white'}"><span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${active ? 'border-blue-700 bg-blue-700 text-white' : 'border-slate-300'}">${active ? '✓' : ''}</span><span class="min-w-0 leading-7 text-slate-800"><b>${index + 1}.</b> ${escapeHtml(item.konten)}${item.gambar ? `<img src="${escapeAttribute(item.gambar)}" alt="Gambar pernyataan ${index + 1}" class="mt-3 max-h-64 max-w-full rounded-lg border border-slate-200 object-contain">` : ''}</span></button>`;
+            return `<button type="button" onclick="toggleSelectedItem(${Number(question.id)}, ${Number(item.id)})" class="flex w-full items-start gap-3 rounded-2xl border p-4 text-left ${active ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'border-slate-200 bg-white'}"><span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${active ? 'border-blue-700 bg-blue-700 text-white' : 'border-slate-300'}">${active ? '✓' : ''}</span><span class="min-w-0 leading-7 text-slate-800"><b>${index + 1}.</b> ${escapeHtml(item.konten)}${item.gambar ? `<img src="${escapeAttribute(item.gambar)}" alt="Gambar pernyataan ${index + 1}" data-zoomable-image class="mt-3 max-h-64 max-w-full cursor-zoom-in rounded-lg border border-slate-200 object-contain" title="Klik untuk memperbesar">` : ''}</span></button>`;
         }).join('');
         setHtml('option-list', html || '<p class="text-sm text-slate-500">Belum ada pernyataan.</p>');
         return;
@@ -342,7 +343,7 @@ function renderOptions(question) {
         const isSelected = selected === letter;
         const optionText = option?.teks || '';
         const image = option?.gambar
-            ? `<img src="${escapeAttribute(option.gambar)}" alt="Gambar opsi ${escapeAttribute(letter)}" class="mt-3 max-h-[42svh] w-auto max-w-full rounded-lg border border-slate-200 object-contain sm:max-h-56">`
+            ? `<img src="${escapeAttribute(option.gambar)}" alt="Gambar opsi ${escapeAttribute(letter)}" data-zoomable-image class="mt-3 max-h-[42svh] w-auto max-w-full cursor-zoom-in rounded-lg border border-slate-200 object-contain sm:max-h-56" title="Klik untuk memperbesar">`
             : '';
 
         return `
@@ -1048,6 +1049,46 @@ function renderMath() {
             });
         });
     });
+}
+
+let imageZoomScale = 1;
+
+document.addEventListener('click', event => {
+    const image = event.target.closest('[data-zoomable-image]');
+    if (!image) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openImageZoom(image.currentSrc || image.src, image.alt || 'Gambar soal');
+}, true);
+
+function openImageZoom(source, alt) {
+    const modal = byId('image-zoom-modal');
+    const image = byId('image-zoom-preview');
+    if (!modal || !image || !source) return;
+    imageZoomScale = 1;
+    image.src = source;
+    image.alt = alt;
+    image.style.transform = 'scale(1)';
+    byId('image-zoom-level').textContent = '100%';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.classList.add('overflow-hidden');
+}
+
+function closeImageZoom() {
+    const modal = byId('image-zoom-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    byId('image-zoom-preview')?.removeAttribute('src');
+    document.body.classList.remove('overflow-hidden');
+}
+
+function adjustImageZoom(delta) {
+    imageZoomScale = Math.min(3, Math.max(0.75, imageZoomScale + delta));
+    const image = byId('image-zoom-preview');
+    if (image) image.style.transform = `scale(${imageZoomScale})`;
+    byId('image-zoom-level').textContent = `${Math.round(imageZoomScale * 100)}%`;
 }
 
 function escapeHtml(value) {

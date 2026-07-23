@@ -15,7 +15,7 @@
     <div id="question-content" class="question-content prose prose-slate max-w-none overflow-x-auto text-base leading-7 text-slate-800"></div>
     <div id="question-table" class="mt-4 hidden max-w-full overflow-x-auto"></div>
     <div id="question-image-wrap" class="mt-4 hidden sm:mt-5">
-        <img id="question-image" src="" alt="Gambar soal" class="max-h-[58svh] w-auto max-w-full rounded-xl border border-slate-200 object-contain sm:max-h-[420px]">
+        <img id="question-image" src="" alt="Gambar soal" data-zoomable-image title="Klik untuk memperbesar" class="max-h-[58svh] w-auto max-w-full cursor-zoom-in rounded-xl border border-slate-200 object-contain sm:max-h-[420px]">
     </div>
 
     <div id="option-list" class="mt-5 space-y-3 sm:mt-6"></div>
