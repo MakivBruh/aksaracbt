@@ -10,10 +10,10 @@
                 Token di sini berlaku untuk satu sesi tryout bersama. Timer peserta mengikuti jam mulai sesi.
             </p>
         </div>
-        <a href="{{ route('admin.sessions.create') }}"
-           class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl">
-            Buat Token
-        </a>
+        <div class="flex gap-2">
+            <a href="{{ route('admin.sessions.display') }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Buka Layar Timer</a>
+            <a href="{{ route('admin.sessions.create') }}" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Buat Token</a>
+        </div>
     </div>
 
     <div class="bg-white rounded-xl shadow-sm overflow-hidden">

@@ -153,6 +153,8 @@ document.querySelectorAll('.rich-command').forEach(button => button.addEventList
         if (url) document.execCommand('createLink', false, url);
     } else if (command === 'insertTable') {
         document.execCommand('insertHTML', false, '<table><tbody><tr><th>Judul 1</th><th>Judul 2</th></tr><tr><td>Isi 1</td><td>Isi 2</td></tr></tbody></table><p><br></p>');
+    } else if (command === 'insertMatrix') {
+        document.execCommand('insertText', false, '$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$$');
     } else document.execCommand(command, false, value || null);
     richEditor.focus(); syncRichEditor();
 }));

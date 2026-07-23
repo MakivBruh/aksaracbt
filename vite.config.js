@@ -8,7 +8,7 @@ export default defineConfig({
     plugins: [
         react(),
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/podium.jsx'],
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/podium.jsx', 'resources/js/session-display.jsx'],
             refresh: true,
             fonts: [
                 bunny('Instrument Sans', {

@@ -17,6 +17,32 @@ class ExamSessionController extends Controller
         return view('admin.sessions.index', compact('sessions'));
     }
 
+    public function display()
+    {
+        $sessions = ExamSession::where('is_active', true)
+            ->orderByDesc('starts_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (ExamSession $session) => [
+                'id' => $session->id,
+                'name' => $session->name,
+                'token' => $session->token,
+                'startsAt' => $session->starts_at->toIso8601String(),
+                'endsAt' => $session->endsAt()->toIso8601String(),
+                'durationMinutes' => $session->duration_minutes,
+            ]);
+
+        return view('admin.sessions.display', [
+            'displayPayload' => [
+                'serverNow' => now()->toIso8601String(),
+                'revealSeconds' => 120,
+                'sessions' => $sessions,
+                'backUrl' => route('admin.sessions.index'),
+                'bellUrl' => asset('sounds/bell-ringing.mp3'),
+            ],
+        ]);
+    }
+
     public function create()
     {
         return view('admin.sessions.create');

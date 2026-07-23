@@ -16,7 +16,8 @@
     $navItems = [
         ['label' => 'Daftar Peserta', 'route' => 'admin.peserta.index', 'active' => 'admin.peserta.index'],
         ['label' => 'Import Excel', 'route' => 'admin.peserta.import', 'active' => 'admin.peserta.import'],
-        ['label' => 'Token Tryout', 'route' => 'admin.sessions.index', 'active' => 'admin.sessions*'],
+        ['label' => 'Token Tryout', 'route' => 'admin.sessions.index', 'active' => 'admin.sessions.index'],
+        ['label' => 'Layar Timer', 'route' => 'admin.sessions.display', 'active' => 'admin.sessions.display'],
         ['label' => 'Bank Soal', 'route' => 'admin.soal.index', 'active' => 'admin.soal*'],
         ['label' => 'Skor Peserta', 'route' => 'admin.skor.index', 'active' => 'admin.skor*'],
         ['label' => 'Podium', 'route' => 'admin.podium.index', 'active' => 'admin.podium*'],

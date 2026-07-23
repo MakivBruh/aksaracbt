@@ -54,6 +54,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/', fn() => redirect()->route('admin.peserta.index'));
     Route::get('media/soal/{filename}', [MediaController::class, 'soalAdmin'])->name('media.soal');
 
+    Route::get('sessions/display', [ExamSessionController::class, 'display'])->name('sessions.display');
     Route::resource('sessions', ExamSessionController::class)
         ->except(['show', 'destroy'])
         ->parameters(['sessions' => 'session']);

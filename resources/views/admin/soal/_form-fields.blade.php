@@ -50,7 +50,7 @@
 <div>
     <label class="label">Isi Soal <span class="text-xs font-normal text-blue-600">(rich text dan LaTeX didukung)</span></label>
     <div class="rich-toolbar" role="toolbar" aria-label="Format isi soal">
-        @foreach([['bold','B'],['italic','I'],['underline','U'],['strikeThrough','S'],['insertUnorderedList','• List'],['insertOrderedList','1. List'],['formatBlock:H2','H2'],['formatBlock:BLOCKQUOTE','Kutipan'],['superscript','x²'],['subscript','x₂'],['createLink','Link'],['insertTable','Tabel']] as [$command,$label])
+        @foreach([['bold','B'],['italic','I'],['underline','U'],['strikeThrough','S'],['insertUnorderedList','• List'],['insertOrderedList','1. List'],['formatBlock:H2','H2'],['formatBlock:BLOCKQUOTE','Kutipan'],['superscript','x²'],['subscript','x₂'],['createLink','Link'],['insertTable','Tabel'],['insertMatrix','Matrix']] as [$command,$label])
             <button type="button" class="rich-command" data-command="{{ $command }}">{{ $label }}</button>
         @endforeach
     </div>
