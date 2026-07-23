@@ -42,4 +42,11 @@ class QuestionContentTest extends TestCase
     {
         $this->assertSame('<a>klik</a>', $this->content->rich('<a href="javascript:alert(1)">klik</a>'));
     }
+
+    public function test_blank_editor_line_is_preserved_between_paragraphs(): void
+    {
+        $result = $this->content->rich('<div>Paragraf pertama</div><div><br></div><div>Paragraf kedua</div>');
+
+        $this->assertSame('<p>Paragraf pertama</p><p><br></p><p>Paragraf kedua</p>', $result);
+    }
 }

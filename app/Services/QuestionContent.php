@@ -37,6 +37,14 @@ class QuestionContent
             if ($node instanceof \DOMComment) { $parent->removeChild($node); continue; }
             if (! $node instanceof \DOMElement) continue;
             $tag = strtolower($node->tagName);
+            if ($tag === 'div') {
+                $paragraph = $node->ownerDocument->createElement('p');
+                while ($node->firstChild) $paragraph->appendChild($node->firstChild);
+                if (! $paragraph->hasChildNodes()) $paragraph->appendChild($node->ownerDocument->createElement('br'));
+                $parent->replaceChild($paragraph, $node);
+                $this->sanitizeChildren($paragraph);
+                continue;
+            }
             if (! in_array($tag, self::ALLOWED_TAGS, true)) {
                 if (in_array($tag, ['script','style','iframe','object','embed'], true)) { $parent->removeChild($node); continue; }
                 while ($node->firstChild) $parent->insertBefore($node->firstChild, $node);
