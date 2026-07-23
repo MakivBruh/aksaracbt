@@ -59,10 +59,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         ->parameters(['sessions' => 'session']);
 
     Route::get('peserta',                    [PesertaImportController::class, 'index'])->name('peserta.index');
+    Route::get('peserta/tambah',             [PesertaImportController::class, 'create'])->name('peserta.create');
+    Route::post('peserta/tambah',            [PesertaImportController::class, 'store'])->name('peserta.store');
     Route::get('peserta/import',              [PesertaImportController::class, 'importForm'])->name('peserta.import');
     Route::post('peserta/import',             [PesertaImportController::class, 'importStore'])->name('peserta.import.store');
     Route::post('peserta/{peserta}/reset-token', [PesertaImportController::class, 'resetToken'])->name('peserta.reset-token');
     Route::post('peserta/{peserta}/unlock', [PesertaImportController::class, 'unlock'])->name('peserta.unlock');
+    Route::post('peserta/selesaikan-semua', [PesertaImportController::class, 'finishAll'])->name('peserta.finish-all');
+    Route::patch('peserta/{peserta}/status', [PesertaImportController::class, 'updateStatus'])->name('peserta.status');
     Route::delete('peserta/{peserta}', [PesertaImportController::class, 'destroy'])->name('peserta.destroy');
 
     Route::post('soal/sync', [SoalController::class, 'sync'])->name('soal.sync');

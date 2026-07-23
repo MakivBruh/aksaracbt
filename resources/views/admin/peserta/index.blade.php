@@ -26,6 +26,14 @@
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <form method="POST" action="{{ route('admin.peserta.finish-all') }}"
+              onsubmit="return confirm('Selesaikan ujian SEMUA peserta? Semua sesi aktif akan ditutup dan peserta tidak dapat melanjutkan ujian. Jawaban yang sudah tersimpan tidak dihapus.')">
+            @csrf
+            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700">
+                Selesaikan Semua Ujian
+            </button>
+        </form>
+
         <form method="GET" action="{{ route('admin.peserta.index') }}" class="flex w-full gap-2 sm:w-auto" data-peserta-search>
             <label for="q" class="sr-only">Cari peserta</label>
             <input
@@ -51,6 +59,11 @@
                 </a>
             @endif
         </form>
+
+        <a href="{{ route('admin.peserta.create') }}"
+           class="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700">
+            + Tambah Peserta
+        </a>
 
         <a href="{{ route('admin.peserta.import') }}"
            class="inline-flex justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
@@ -122,7 +135,18 @@
                         </span>
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <div class="flex justify-end gap-2">
+                        <div class="flex flex-wrap justify-end gap-2">
+                            <form method="POST" action="{{ route('admin.peserta.status', $p->id) }}" class="flex items-center gap-1"
+                                  onsubmit="return confirm(@js("Ubah status peserta {$p->nama}? Sesi login aktif peserta akan ditutup."))">
+                                @csrf
+                                @method('PATCH')
+                                <select name="status" class="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700">
+                                    <option value="belum_mulai" @selected($p->status === 'belum_mulai')>Belum mulai</option>
+                                    <option value="sedang_ujian" @selected($p->status === 'sedang_ujian')>Sedang ujian</option>
+                                    <option value="selesai" @selected($p->status === 'selesai')>Selesai</option>
+                                </select>
+                                <button class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">Ubah</button>
+                            </form>
                         @if($jml >= 3)
                             <form method="POST" action="{{ route('admin.peserta.unlock', $p->id) }}"
                                   onsubmit="return confirm('Buka akses ujian peserta ini dan reset pelanggarannya?')">

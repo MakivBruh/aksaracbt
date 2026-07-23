@@ -10,6 +10,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class Peserta extends Authenticatable
 {
+    protected $connection = 'peserta_db';
+
     protected $fillable = [
         'nama',
         'nama_sekolah',

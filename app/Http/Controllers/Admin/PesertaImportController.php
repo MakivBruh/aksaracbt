@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * CATATAN ARSITEKTUR:
@@ -79,7 +80,9 @@ class PesertaImportController extends Controller
 
         $answeredByPeserta = DB::table('jawabans')
             ->whereIn('peserta_id', $pesertaIds)
-            ->whereNotNull('jawaban')
+            ->where(function ($query) {
+                $query->whereNotNull('jawaban')->orWhereNotNull('jawaban_data');
+            })
             ->select('peserta_id', DB::raw('COUNT(*) as total'))
             ->groupBy('peserta_id')
             ->pluck('total', 'peserta_id');
@@ -113,6 +116,55 @@ class PesertaImportController extends Controller
     public function importForm()
     {
         return view('admin.peserta.import');
+    }
+
+    public function create()
+    {
+        $mapels = \App\Models\MataPelajaran::pilihan()->orderBy('nama')->get();
+
+        return view('admin.peserta.create', compact('mapels'));
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'nama' => 'required|string|max:255',
+            'nama_sekolah' => 'nullable|string|max:255',
+            'email' => 'required|email:rfc|max:255|unique:peserta_db.pesertas,email',
+            'mapel_pilihan' => 'required|array|size:2',
+            'mapel_pilihan.*' => [
+                'required', 'integer', 'distinct',
+                Rule::exists('peserta_db.mata_pelajarans', 'id')->where(fn ($query) => $query->where('tipe', 'pilihan')),
+            ],
+        ], [
+            'mapel_pilihan.size' => 'Pilih tepat dua mata pelajaran pilihan.',
+            'mapel_pilihan.*.distinct' => 'Dua mata pelajaran pilihan harus berbeda.',
+        ]);
+
+        $email = strtolower(trim($validated['email']));
+        $noUjian = 'TKA-'.strtoupper(substr(md5($email), 0, 6));
+
+        if (Peserta::where('no_ujian', $noUjian)->exists()) {
+            $noUjian = 'TKA-'.strtoupper(Str::random(6));
+        }
+
+        $peserta = DB::connection('peserta_db')->transaction(function () use ($validated, $email, $noUjian) {
+            $peserta = Peserta::create([
+                'nama' => trim($validated['nama']),
+                'nama_sekolah' => filled($validated['nama_sekolah'] ?? null) ? trim($validated['nama_sekolah']) : null,
+                'email' => $email,
+                'no_ujian' => $noUjian,
+                'token_login' => Str::random(32),
+                'status' => 'belum_mulai',
+                'active_session_token' => null,
+            ]);
+            $peserta->mataPelajarans()->sync($validated['mapel_pilihan']);
+
+            return $peserta;
+        });
+
+        return redirect()->route('admin.peserta.index')
+            ->with('success', "Peserta {$peserta->nama} berhasil ditambahkan dengan nomor ujian {$peserta->no_ujian}.");
     }
 
     /**
@@ -172,19 +224,60 @@ class PesertaImportController extends Controller
         return back()->with('success', "Akses ujian {$peserta->nama} sudah dibuka lagi. Peserta bisa login ulang selama token tryout masih aktif.");
     }
 
+    public function updateStatus(Request $request, Peserta $peserta): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:belum_mulai,sedang_ujian,selesai',
+        ]);
+
+        $status = $validated['status'];
+        $attributes = ['status' => $status, 'active_session_token' => null];
+
+        if ($status === 'selesai') {
+            $attributes['selesai_ujian_at'] = $peserta->selesai_ujian_at ?: now();
+        } elseif ($status === 'sedang_ujian') {
+            $attributes['selesai_ujian_at'] = null;
+        } else {
+            $attributes += [
+                'mulai_ujian_at' => null,
+                'selesai_ujian_at' => null,
+                'token_used_at' => null,
+                'active_exam_session_id' => null,
+            ];
+        }
+
+        $peserta->update($attributes);
+
+        return back()->with('success', "Status {$peserta->nama} diubah menjadi ".str_replace('_', ' ', $status).'. Jawaban yang sudah tersimpan tetap dipertahankan.');
+    }
+
+    public function finishAll(): RedirectResponse
+    {
+        $now = now();
+        $total = Peserta::where('status', '!=', 'selesai')->update([
+            'status' => 'selesai',
+            'selesai_ujian_at' => $now,
+            'active_session_token' => null,
+            'updated_at' => $now,
+        ]);
+
+        return back()->with('success', "{$total} peserta berhasil diselesaikan. Buka halaman Skor lalu tekan Hitung Ulang untuk menghitung nilainya.");
+    }
+
     public function destroy(Peserta $peserta): RedirectResponse
     {
         $nama = $peserta->nama;
         $noUjian = $peserta->no_ujian;
 
-        DB::transaction(function () use ($peserta) {
-            DB::table('jawabans')->where('peserta_id', $peserta->id)->delete();
-            DB::table('log_pelanggarans')->where('peserta_id', $peserta->id)->delete();
-            DB::table('nilai_details')->where('peserta_id', $peserta->id)->delete();
-            DB::table('peserta_mata_pelajaran')->where('peserta_id', $peserta->id)->delete();
+        DB::connection('peserta_db')->transaction(function () use ($peserta) {
+            $db = DB::connection('peserta_db');
+            $db->table('jawabans')->where('peserta_id', $peserta->id)->delete();
+            $db->table('log_pelanggarans')->where('peserta_id', $peserta->id)->delete();
+            $db->table('nilai_details')->where('peserta_id', $peserta->id)->delete();
+            $db->table('peserta_mata_pelajaran')->where('peserta_id', $peserta->id)->delete();
 
-            if (DB::getSchemaBuilder()->hasTable('personal_access_tokens')) {
-                DB::table('personal_access_tokens')
+            if ($db->getSchemaBuilder()->hasTable('personal_access_tokens')) {
+                $db->table('personal_access_tokens')
                     ->where('tokenable_type', Peserta::class)
                     ->where('tokenable_id', $peserta->id)
                     ->delete();
